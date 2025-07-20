@@ -6,35 +6,61 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from diversification_suggestion import diversification_suggestion
 
+df = pd.read_csv('unified.csv')
+supported_tickers = [t.lower() for t in df.columns.tolist()]
+
 st.set_page_config(page_title="Portfolio Diversifier", layout="centered")
 st.title("📈 Portfolio Diversifier")
 
-st.markdown("Enter your portfolio tickers and weights (in %).")
+st.markdown("Select your portfolio tickers and adjust their weights (in %).")
 
-# Input tickers and weights
-portfolio_input = st.text_area("Enter tickers and weights (e.g. spy:80, bnd:20)", value="spy:80, bnd:20")
-tickers_weights = [x.strip() for x in portfolio_input.split(",") if ":" in x]
+# Select tickers using a searchable multiselect dropdown
+selected_tickers = st.multiselect(
+    "Choose up to 10 tickers",
+    options=supported_tickers,
+    default=["spy", "bnd"],
+    max_selections=10,
+    help="Start typing to search for tickers."
+)
 
-# Parse input
-tickers = []
 weights = []
-for item in tickers_weights:
-    try:
-        ticker, weight = item.split(":")
-        tickers.append(ticker.strip().upper())
-        weights.append(float(weight.strip()) / 100)  # convert % to decimal
-    except:
-        st.error(f"Couldn't parse: {item}")
+if selected_tickers:
+    st.markdown("### Adjust Weights")
+    total_weight = 0
+    weight_inputs = []
+    for ticker in selected_tickers:
+        weight = st.slider(
+            f"Weight for {ticker}",
+            min_value=0,
+            max_value=100,
+            value=int(100 // len(selected_tickers)),
+            step=1,
+            key=f"weight_{ticker}"
+        )
+        weight_inputs.append(weight)
+        total_weight += weight
+
+    # Normalize weights to sum to 100%
+    if total_weight == 0:
+        st.warning("Please assign at least some weight to your tickers.")
+        weights = [0 for _ in selected_tickers]
+    else:
+        weights = [w * 100 / total_weight for w in weight_inputs]
+
+    st.markdown(
+        "#### Normalized Weights\n" +
+        "\n".join([f"- **{ticker}**: {w:.1f}%" for ticker, w in zip(selected_tickers, weights)])
+    )
 
 # Validate weights
-if abs(sum(weights) - 1.0) > 0.01:
-    st.warning("⚠️ Portfolio weights should sum to 100%. Current total: {:.1f}%".format(sum(weights)*100))
+if selected_tickers and abs(sum(weights) - 100.0) > 0.01:
+    st.warning("⚠️ Portfolio weights should sum to 100%. Current total: {:.1f}%".format(sum(weights)))
 
-if tickers and len(weights) == len(tickers):
+if selected_tickers and len(weights) == len(selected_tickers):
     with st.spinner("Fetching data and analyzing correlations..."):
 
         # Use diversification_suggestion to get suggestions
-        portfolio_dict = dict(zip([t.lower() for t in tickers], weights))
+        portfolio_dict = dict(zip([t.lower() for t in selected_tickers], [w/100 for w in weights]))
         suggestions = diversification_suggestion(portfolio_dict, n_suggestions=5)
         bests = list(suggestions) if len(suggestions) > 0 else []
 
@@ -43,5 +69,4 @@ if tickers and len(weights) == len(tickers):
             for best in bests:
                 st.markdown(f"- **{best.upper()}**")
         else:
-            st.warning("No suitable diversifier found.")
             st.warning("No suitable diversifier found.")
