@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.graph_objs as go
 from diversification_suggestion import diversification_suggestion
 
 df = pd.read_csv('unified.csv')
@@ -68,5 +69,29 @@ if selected_tickers and len(weights) == len(selected_tickers):
         if bests:
             for best in bests:
                 st.markdown(f"- **{best.upper()}**")
+            # Plot historic price history for all suggestions using Plotly
+            st.subheader("📊 Historic Correlation of Relative Daily Price Changes")
+            price_df = df[[b for b in bests if b in df.columns]].copy()
+            price_df['ref'] = sum((df[k].values * v for k, v in portfolio_dict.items()))
+            if not price_df.empty:
+                fig = go.Figure()
+                for col in price_df.columns:
+                    if col == 'ref':
+                        continue
+                    fig.add_trace(go.Scatter(
+                        x=price_df['ref'],
+                        y=price_df[col],
+                        mode='markers',
+                        name=col.upper()
+                    ))
+                fig.update_layout(
+                    xaxis_title="Portfolio relative daily price diff",
+                    yaxis_title="Suggestion relative daily price diff",
+                    legend_title="Ticker",
+                    template="plotly_white"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No price data available for suggestions.")
         else:
             st.warning("No suitable diversifier found.")
