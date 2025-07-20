@@ -30,18 +30,6 @@ for item in tickers_weights:
 if abs(sum(weights) - 1.0) > 0.01:
     st.warning("⚠️ Portfolio weights should sum to 100%. Current total: {:.1f}%".format(sum(weights)*100))
 
-# Diversification candidates
-diversifiers = {
-    "GLD": "Gold ETF",
-    "TLT": "Long-Term Bonds",
-    "VNQ": "Real Estate",
-    "BTC-USD": "Bitcoin",
-    "XLE": "Energy Sector",
-    "VEA": "Intl. Developed Markets"
-}
-
-all_tickers = tickers + list(diversifiers.keys())
-
 if tickers and len(weights) == len(tickers):
     with st.spinner("Fetching data and analyzing correlations..."):
 
@@ -53,7 +41,6 @@ if tickers and len(weights) == len(tickers):
         st.subheader("🧠 Suggested Diversifiers")
         if bests:
             for best in bests:
-                name = diversifiers.get(best.upper(), best)
                 st.markdown(f"- **{best.upper()}**")
         else:
             st.warning("No suitable diversifier found.")
